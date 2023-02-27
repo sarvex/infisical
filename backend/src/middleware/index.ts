@@ -12,6 +12,7 @@ import requireServiceTokenAuth from './requireServiceTokenAuth';
 import requireServiceTokenDataAuth from './requireServiceTokenDataAuth';
 import requireSecretAuth from './requireSecretAuth';
 import requireSecretsAuth from './requireSecretsAuth';
+import requireLicenseAuth from './requireLicenseAuth';
 import validateRequest from './validateRequest';
 
 export {
@@ -29,5 +30,6 @@ export {
 	requireServiceTokenDataAuth,
 	requireSecretAuth,
 	requireSecretsAuth,
+	requireLicenseAuth,
 	validateRequest
 };

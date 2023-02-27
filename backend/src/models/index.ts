@@ -17,6 +17,7 @@ import Workspace, { IWorkspace } from './workspace';
 import ServiceTokenData, { IServiceTokenData } from './serviceTokenData';
 import APIKeyData, { IAPIKeyData } from './apiKeyData';
 import LoginSRPDetail, { ILoginSRPDetail } from './loginSRPDetail';
+import License, { ILicense } from './license';
 
 export {
 	BackupPrivateKey,
@@ -56,5 +57,7 @@ export {
 	APIKeyData,
 	IAPIKeyData,
 	LoginSRPDetail,
-	ILoginSRPDetail
+	ILoginSRPDetail,
+	License,
+	ILicense
 };

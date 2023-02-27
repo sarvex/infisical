@@ -37,7 +37,6 @@ import {
   secret as v1SecretRouter,
   serviceToken as v1ServiceTokenRouter,
   password as v1PasswordRouter,
-  stripe as v1StripeRouter,
   integration as v1IntegrationRouter,
   integrationAuth as v1IntegrationAuthRouter
 } from './routes/v1';
@@ -53,6 +52,7 @@ import {
   apiKeyData as v2APIKeyDataRouter,
   environment as v2EnvironmentRouter,
   tags as v2TagsRouter,
+  license as v2LicenseRouter
 } from './routes/v2';
 
 import { healthCheck } from './routes/status';
@@ -60,6 +60,8 @@ import { healthCheck } from './routes/status';
 import { getLogger } from './utils/logger';
 import { RouteNotFoundError } from './utils/errors';
 import { requestErrorHandler } from './middleware/requestErrorHandler';
+
+
 
 // patch async route params to handle Promise Rejections
 patchRouterParam();
@@ -107,7 +109,6 @@ app.use('/api/v1/invite-org', v1InviteOrgRouter);
 app.use('/api/v1/secret', v1SecretRouter);
 app.use('/api/v1/service-token', v1ServiceTokenRouter); // deprecated
 app.use('/api/v1/password', v1PasswordRouter);
-app.use('/api/v1/stripe', v1StripeRouter);
 app.use('/api/v1/integration', v1IntegrationRouter);
 app.use('/api/v1/integration-auth', v1IntegrationAuthRouter);
 
@@ -123,6 +124,7 @@ app.use('/api/v2/secret', v2SecretRouter); // deprecated
 app.use('/api/v2/secrets', v2SecretsRouter);
 app.use('/api/v2/service-token', v2ServiceTokenDataRouter); // TODO: turn into plural route
 app.use('/api/v2/api-key', v2APIKeyDataRouter);
+app.use('/api/v2/license', v2LicenseRouter);
 
 // api docs 
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerFile))

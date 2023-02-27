@@ -23,6 +23,7 @@ declare global {
 			serviceTokenData: any;
 			apiKeyData: any;
 			query?: any;
+			license: any;
 		}
 	}
 }

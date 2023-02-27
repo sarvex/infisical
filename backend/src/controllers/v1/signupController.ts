@@ -39,7 +39,7 @@ export const beginEmailSignup = async (req: Request, res: Response) => {
 		}
 
 		// send send verification email
-		await sendEmailVerification({ email });
+		// await sendEmailVerification({ email });
 	} catch (err) {
 		Sentry.setUser(null);
 		Sentry.captureException(err);
@@ -75,10 +75,10 @@ export const verifyEmailSignup = async (req: Request, res: Response) => {
 		}
 
 		// verify email
-		await checkEmailVerification({
-			email,
-			code
-		});
+		// await checkEmailVerification({
+		// 	email,
+		// 	code
+		// });
 
 		if (!user) {
 			user = await new User({

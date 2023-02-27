@@ -143,20 +143,6 @@ router.post(
 );
 
 router.get(
-	'/:organizationId/subscriptions',
-	requireAuth({
-		acceptedAuthModes: ['jwt']
-	}),
-	requireOrganizationAuth({
-		acceptedRoles: [OWNER, ADMIN, MEMBER],
-		acceptedStatuses: [ACCEPTED]
-	}),
-	param('organizationId').exists().trim(),
-	validateRequest,
-	organizationController.getOrganizationSubscriptions
-);
-
-router.get(
 	'/:organizationId/workspace-memberships',
 	requireAuth({
 		acceptedAuthModes: ['jwt']

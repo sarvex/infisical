@@ -77,4 +77,18 @@ router.get(
     organizationsController.getOrganizationWorkspaces
 );
 
+router.get(
+    '/:organizationId/licenses',
+    param('organizationId').exists().trim(),
+    validateRequest,
+    requireAuth({
+        acceptedAuthModes: ['jwt', 'apiKey']
+    }),
+    requireOrganizationAuth({
+        acceptedRoles: [OWNER, ADMIN],
+        acceptedStatuses: [ACCEPTED]
+    }),
+    organizationsController.getOrganizationLicenses 
+);
+
 export default router;

@@ -9,6 +9,7 @@ import * as secretController from './secretController';
 import * as secretsController from './secretsController';
 import * as environmentController from './environmentController';
 import * as tagController from './tagController';
+import * as licenseController from './licenseController';
 
 export {
     authController,
@@ -21,5 +22,6 @@ export {
     secretController,
     secretsController,
     environmentController,
-    tagController
+    tagController,
+    licenseController
 }

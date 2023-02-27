@@ -47,7 +47,6 @@ import {
   SMTP_HOST_MAILGUN,
   SMTP_HOST_SOCKETLABS
 } from './smtp';
-import { PLAN_STARTER, PLAN_PRO } from './stripe';
 import {
   MFA_METHOD_EMAIL
 } from './user';
@@ -106,8 +105,6 @@ export {
   SMTP_HOST_SENDGRID,
   SMTP_HOST_MAILGUN,
   SMTP_HOST_SOCKETLABS,
-  PLAN_STARTER,
-  PLAN_PRO,
   MFA_METHOD_EMAIL,
   TOKEN_EMAIL_CONFIRMATION,
   TOKEN_EMAIL_MFA,

@@ -12,7 +12,6 @@ import inviteOrg from './inviteOrg';
 import secret from './secret';
 import serviceToken from './serviceToken';
 import password from './password';
-import stripe from './stripe';
 import integration from './integration';
 import integrationAuth from './integrationAuth';
 
@@ -31,7 +30,6 @@ export {
 	secret,
 	serviceToken,
 	password,
-	stripe,
 	integration,
 	integrationAuth
 };

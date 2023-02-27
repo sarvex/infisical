@@ -1,7 +1,9 @@
 import { LICENSE_KEY } from '../../config';
+import { createLicenseKeyHelper } from '../helpers/license';
 
 /**
  * Class to handle Enterprise Edition license actions
+ * TODO: re-think this class
  */
 class EELicenseService {
     
@@ -9,6 +11,20 @@ class EELicenseService {
     
     constructor(licenseKey: string) {
         this._isLicenseValid = true;
+    }
+    
+    public static createLicenseKey({
+        email,
+        description
+    }: {
+        email: string;
+        description: string;
+    }): void {
+        
+        createLicenseKeyHelper({
+            email,
+            description
+        });
     }
 
     public get isLicenseValid(): boolean {

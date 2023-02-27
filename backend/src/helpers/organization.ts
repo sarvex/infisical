@@ -1,23 +1,20 @@
 import * as Sentry from '@sentry/node';
-import Stripe from 'stripe';
 import {
-	STRIPE_SECRET_KEY,
-	STRIPE_PRODUCT_STARTER,
-	STRIPE_PRODUCT_TEAM,
-	STRIPE_PRODUCT_PRO
+	ENCRYPTION_KEY,
+	LICENSE_SRV_URL,
+	LICENSE_SRV_KEY
 } from '../config';
-const stripe = new Stripe(STRIPE_SECRET_KEY, {
-	apiVersion: '2022-08-01'
-});
-import { Types } from 'mongoose';
 import { ACCEPTED } from '../variables';
-import { Organization, MembershipOrg } from '../models';
-
-const productToPriceMap = {
-	starter: STRIPE_PRODUCT_STARTER,
-	team: STRIPE_PRODUCT_TEAM,
-	pro: STRIPE_PRODUCT_PRO
-};
+import {
+	Organization, 
+	MembershipOrg,
+	License
+} from '../models';
+import {
+	encryptSymmetric,
+	decryptSymmetric
+} from '../utils/crypto';
+import request from '../config/request';
 
 /**
  * Create an organization with name [name]
@@ -35,25 +32,45 @@ const createOrganization = async ({
 }) => {
 	let organization;
 	try {
-		// register stripe account
+		organization = await new Organization({
+			name
+		}).save();
+		
+		if (LICENSE_SRV_URL && LICENSE_SRV_KEY) {
+			// license server URL and key exist -> create and 
+			// assign new license to the organization
 
-		if (STRIPE_SECRET_KEY) {
-			const customer = await stripe.customers.create({
-				email,
-				description: name
+			const { data } = await request.post(
+				`${LICENSE_SRV_URL}/api/v1/license-key`,
+				{
+					email,
+					description: name
+				},
+				{
+					headers: {
+						'X-API-KEY': LICENSE_SRV_KEY,
+						'Content-Type': 'application/json'
+					}
+				}
+			);
+
+			const {
+				ciphertext: licenseKeyCiphertext,
+				iv: licenseKeyIV, 
+				tag: licenseKeyTag
+			} = encryptSymmetric({
+				plaintext: data.licenseKey,
+				key: ENCRYPTION_KEY
 			});
-
-			organization = await new Organization({
-				name,
-				customerId: customer.id
-			}).save();
-		} else {
-			organization = await new Organization({
-				name
+			
+			await new License({
+				organization: organization._id,
+				type: 'organization',
+				licenseKeyCiphertext,
+				licenseKeyIV,
+				licenseKeyTag
 			}).save();
 		}
-
-		await initSubscriptionOrg({ organizationId: organization._id });
 	} catch (err) {
 		Sentry.setUser({ email });
 		Sentry.captureException(err);
@@ -61,58 +78,6 @@ const createOrganization = async ({
 	}
 
 	return organization;
-};
-
-/**
- * Initialize free-tier subscription for new organization
- * @param {Object} obj
- * @param {String} obj.organizationId - id of associated organization for subscription
- * @return {Object} obj
- * @return {Object} obj.stripeSubscription - new stripe subscription
- * @return {Subscription} obj.subscription - new subscription
- */
-const initSubscriptionOrg = async ({
-	organizationId
-}: {
-	organizationId: Types.ObjectId;
-}) => {
-	let stripeSubscription;
-	let subscription;
-	try {
-		// find organization
-		const organization = await Organization.findOne({
-			_id: organizationId
-		});
-
-		if (organization) {
-			if (organization.customerId) {
-				// initialize starter subscription with quantity of 0
-				stripeSubscription = await stripe.subscriptions.create({
-					customer: organization.customerId,
-					items: [
-						{
-							price: productToPriceMap['starter'],
-							quantity: 1
-						}
-					],
-					payment_behavior: 'default_incomplete',
-					proration_behavior: 'none',
-					expand: ['latest_invoice.payment_intent']
-				});
-			}
-		} else {
-			throw new Error('Failed to initialize free organization subscription');
-		}
-	} catch (err) {
-		Sentry.setUser(null);
-		Sentry.captureException(err);
-		throw new Error('Failed to initialize free organization subscription');
-	}
-
-	return {
-		stripeSubscription,
-		subscription
-	};
 };
 
 /**
@@ -126,45 +91,52 @@ const updateSubscriptionOrgQuantity = async ({
 }: {
 	organizationId: string;
 }) => {
-	let stripeSubscription;
 	try {
 		// find organization
 		const organization = await Organization.findOne({
 			_id: organizationId
 		});
-
-		if (organization && organization.customerId) {
+		
+		if (!organization) throw new Error('Failed to find organization to update subscription quantity');
+		
+		const license = await License.findOne({
+			organization: organization._id,
+			type: 'organization'
+		});
+		
+		if (organization && license) {
 			const quantity = await MembershipOrg.countDocuments({
 				organization: organizationId,
 				status: ACCEPTED
 			});
 
-			const subscription = (
-				await stripe.subscriptions.list({
-					customer: organization.customerId
-				})
-			).data[0];
-
-			stripeSubscription = await stripe.subscriptions.update(subscription.id, {
-				items: [
-					{
-						id: subscription.items.data[0].id,
-						price: subscription.items.data[0].price.id,
-						quantity
-					}
-				]
+			const licenseKey = decryptSymmetric({
+				ciphertext: license.licenseKeyCiphertext,
+				iv: license.licenseKeyIV,
+				tag: license.licenseKeyTag,
+				key: ENCRYPTION_KEY
 			});
+
+			await request.patch(
+				`${LICENSE_SRV_URL}/api/v1/license-key/seats`,
+				{
+					seats: quantity
+				},
+				{
+					headers: {
+						'X-API-KEY': licenseKey,
+						'Content-Type': 'application/json'
+					}
+				}
+			);
 		}
 	} catch (err) {
 		Sentry.setUser(null);
 		Sentry.captureException(err);
 	}
-
-	return stripeSubscription;
 };
 
 export {
 	createOrganization,
-	initSubscriptionOrg,
 	updateSubscriptionOrgQuantity
 };

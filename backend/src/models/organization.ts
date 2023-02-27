@@ -12,7 +12,7 @@ const organizationSchema = new Schema<IOrganization>(
 			type: String,
 			required: true
 		},
-		customerId: {
+		customerId: { // TODO: deprecate
 			type: String
 		}
 	},

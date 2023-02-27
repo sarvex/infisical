@@ -7,8 +7,9 @@ import secret from './secret'; // deprecated
 import secrets from './secrets';
 import serviceTokenData from './serviceTokenData';
 import apiKeyData from './apiKeyData';
-import environment from "./environment"
-import tags from "./tags"
+import environment from './environment';
+import tags from './tags';
+import license from './license';
 
 export {
     auth,
@@ -21,5 +22,6 @@ export {
     serviceTokenData,
     apiKeyData,
     environment,
-    tags
+    tags,
+    license
 }

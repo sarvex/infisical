@@ -1,12 +1,22 @@
 import { Request, Response } from 'express';
+import { Types } from 'mongoose';
 import * as Sentry from '@sentry/node';
 import { 
     MembershipOrg,
     Membership,
-    Workspace
+    Workspace,
+    License
 } from '../../models';
 import { deleteMembershipOrg } from '../../helpers/membershipOrg';
 import { updateSubscriptionOrgQuantity } from '../../helpers/organization';
+import {
+    ENCRYPTION_KEY,
+    LICENSE_SRV_URL
+} from '../../config';
+import {
+    decryptSymmetric
+} from '../../utils/crypto';
+import request from '../../config/request';
 
 /**
  * Return memberships for organization with id [organizationId]
@@ -292,5 +302,57 @@ export const getOrganizationWorkspaces = async (req: Request, res: Response) => 
     
     return res.status(200).send({
         workspaces
+    });
+}
+
+/**
+ * Return licenses for organization with id [organizationId]
+ * @param req 
+ * @param res 
+ */
+export const getOrganizationLicenses = async (req: Request, res: Response) => {
+    const licenses = [];
+    try {
+        const { organizationId } = req.params;
+
+        const additionalLicenses = await License.find({
+            organization: new Types.ObjectId(organizationId)
+        });
+
+        for await (const license of additionalLicenses) {
+            const licenseKey = decryptSymmetric({
+                ciphertext: license.licenseKeyCiphertext,
+                iv: license.licenseKeyIV,
+                tag: license.licenseKeyTag,
+                key: ENCRYPTION_KEY
+            });
+
+            const { data } = await request.get(
+                `${LICENSE_SRV_URL}/api/v1/license-key`,
+                {
+                    headers: {
+                        'X-API-KEY': licenseKey,
+                        'Content-Type': 'application/json'
+                    }
+                }
+            );
+
+            licenses.push({
+                _id: license._id,
+                type: license.type,
+                licenseKey,
+                ...data
+            });
+        }
+    } catch (err) {
+        Sentry.setUser({ email: req.user.email });
+        Sentry.captureException(err); 
+        return res.status(400).send({
+            message: 'Failed to get additional licenses for organization'
+        });
+    }
+
+    return res.status(200).send({
+        licenses
     });
 }

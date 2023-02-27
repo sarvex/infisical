@@ -1,21 +1,22 @@
 import { Request, Response } from 'express';
 import * as Sentry from '@sentry/node';
 import {
-	SITE_URL,
-	STRIPE_SECRET_KEY
+	License
+} from '../../models';
+import {
+	decryptSymmetric
+} from '../../utils/crypto';
+import {
+	ENCRYPTION_KEY,
+	LICENSE_SRV_URL
 } from '../../config';
-import Stripe from 'stripe';
-
-const stripe = new Stripe(STRIPE_SECRET_KEY, {
-	apiVersion: '2022-08-01'
-});
+import request from '../../config/request';
 import {
 	Membership,
 	MembershipOrg,
 	Organization,
 	Workspace,
-	IncidentContactOrg,
-	IMembershipOrg
+	IncidentContactOrg
 } from '../../models';
 import { createOrganization as create } from '../../helpers/organization';
 import { addMembershipsOrg } from '../../helpers/membershipOrg';
@@ -313,7 +314,7 @@ export const deleteOrganizationIncidentContact = async (
 };
 
 /**
- * Redirect user to (stripe) billing portal or add card page depending on
+ * Redirect user to billing portal or add card page depending on
  * if there is a card on file
  * @param req
  * @param res
@@ -323,68 +324,43 @@ export const createOrganizationPortalSession = async (
 	req: Request,
 	res: Response
 ) => {
-	let session;
 	try {
-		// check if there is a payment method on file
-		const paymentMethods = await stripe.paymentMethods.list({
-			customer: req.membershipOrg.organization.customerId,
-			type: 'card'
+		const license = await License.findOne({
+			organization: req.membershipOrg.organization._id,
+			type: 'organization'
 		});
+		
+		if (!license) throw new Error('Failed to create organization portal session');
+	
+		const licenseKey = decryptSymmetric({
+			ciphertext: license.licenseKeyCiphertext,
+			iv: license.licenseKeyIV,
+			tag: license.licenseKeyTag,
+			key: ENCRYPTION_KEY
+		});
+		
+		const { data } = await request.get(
+			`${LICENSE_SRV_URL}/api/v1/license-key/billing-session`,
+			{
+				headers: {
+					'X-API-KEY': licenseKey,
+					'Content-Type': 'application/json'
+				}
+			}
+		);
 
-		if (paymentMethods.data.length < 1) {
-			// case: no payment method on file
-			session = await stripe.checkout.sessions.create({
-				customer: req.membershipOrg.organization.customerId,
-				mode: 'setup',
-				payment_method_types: ['card'],
-				success_url: SITE_URL + '/dashboard',
-				cancel_url: SITE_URL + '/dashboard'
-			});
-		} else {
-			session = await stripe.billingPortal.sessions.create({
-				customer: req.membershipOrg.organization.customerId,
-				return_url: SITE_URL + '/dashboard'
-			});
-		}
-
-		return res.status(200).send({ url: session.url });
+		return res.status(200).send({
+			url: data.url
+		});	
 	} catch (err) {
 		Sentry.setUser({ email: req.user.email });
 		Sentry.captureException(err);
-		return res.status(400).send({
-			message: 'Failed to redirect to organization billing portal'
-		});
-	}
-};
-
-/**
- * Return organization subscriptions
- * @param req
- * @param res
- * @returns
- */
-export const getOrganizationSubscriptions = async (
-	req: Request,
-	res: Response
-) => {
-	let subscriptions;
-	try {
-		subscriptions = await stripe.subscriptions.list({
-			customer: req.membershipOrg.organization.customerId
-		});
-	} catch (err) {
-		Sentry.setUser({ email: req.user.email });
-		Sentry.captureException(err);
-		return res.status(400).send({
-			message: 'Failed to get organization subscriptions'
-		});
 	}
 
-	return res.status(200).send({
-		subscriptions
+	return res.status(400).send({
+		message: 'Failed to redirect to organization billing portal'
 	});
 };
-
 
 /**
  * Given a org id, return the projects each member of the org belongs to
